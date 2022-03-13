@@ -1,62 +1,66 @@
-=========================== DETALII CLASE =================================
+=========================== DESCRIPTION ===================================
+(*) this project was realized with the following two goals in mind:
+	1) familiarize myself with the Java Threads API.
+	2) obtain a better understanding of how document processing on a
+	large scale is done, using the Map-Reduce paradigm.
+
+(*) with the above goals in mind, what this project does is it processes
+some documents in order to obtain a result which was communicated to us
+by the TA team. This is done using a personal, somewhat generic Map-Reduce
+paradigm implementation and, of course, using a multithreaded approach.
+===========================================================================
+
+=========================== CLASS DETAILS =================================
 (*) Mapper, Reducer
-- interfete ce asigura genericitatea operatiilor de map si reduce
+	- interfaces which assure the generic character of the map and
+	reduce operations.
 
-(**) Collector
-- interfata implementata de obiectele ce vor stoca informatiile operatiilor
-de map si reduce
-- in principiu, clasele care implementeaza aceasta interfata ar trebui sa
-fie niste wrappere peste niste containere (in special, Maps)
+(*) Collector
+	- interface implemented by the objects which will store the
+	information from the map and reduce operations
+	- the classes implementing this interface should be some kind of
+	wrappers over containers (especially Maps)
+(*) Text
+	- interface which assures the generic character of the values
+	from the operations in Map
 
-(***) Text
-- interfata ce asigura genericitatea valorilor din operatiile de Map
-- aceasta interfata impune claselor care o implementeaza sa ofere o
-metoda de getText() prin care se obtine valoarea ce urmeaza a fi prelu-
-crata in operatiile de tip Map (nu exista nicio constrangere asupra
-obiectului ce urmeaza a fi prelucrat pentru ca m-am gandit ca ar fi
-la latitudinea programatorului care ar folosi API-ul asta sa se asigure
-ca obiectul intors de getText() este ceva ce ar avea sens sa fie
-prelucrat de un Map)
-
-(****) FileEntry
-- am ales sa folosesc aceasta clasa pe post de cheie in reduce() si map()
-deoarece, inainte de a fi scris output-ul, trebuie facuta o sortare a
-output-ului lui reduce() si, in cazul in care 2 fisiere au acelasi rang,
-trebuie facuta diferenta intre ele folosind pozitiile pe care le au
-in fisierul de intrare deci nu ar fi fost suficient sa folosesc doar
-numele fisierelor pe post de chei.
+(*) FileEntry
+	- this class is used as a key in map() and reduce() because,
+	before the output is written, it needs to be sorted and if two
+	files have the same rank, then there needs to be made some kind
+	of differentiation between them using the positions they have
+	in the input file so it wouldn't have been enough to just use
+	the file names as the keys.	
 ===========================================================================
 
-======================== DETALII IMPLEMENTARE =============================
-(*) WORKFLOW :
-	1) Se face impartirea fisierelor in fragmente de dimensiune D
-	(daca este posibil).
+=============================== WORKFLOW ==================================
+(*) STEPS:
+	1) The files are fragmented into pieces of size D (if possible)
+	
+	2) A map() task is prepared for each fragment resulting from 1)
+	and is assigned to a worker using the ExecutorService model.
+	Before going to the next step, all tasks need to be executed.
 
-	2) Se pregateste cate un task de tip map() pentru fiecare fragment
-	produs la 1) si se assigneaza unui worker folosind modelul
-	ExecutorService. Se va astepta terminarea tuturor taskurilor
-	inainte de a trece la pasul urmator.
+	3) A reduce() task is prepared for each entry in the Collector
+	object produced by step 2) and is assigned to a worker. Before
+	going to the next step, all tasks need to be executed.
 
-	3) Se pregateste cate un task de tip reduce() pentru fiecare entry
-	din obiectul de tip Collector produs la 2) si se assigneaza unui
-	worker. Inainte de a trece la pasul 4) se asteapta terminarea
-	tuturor taskurilor.
-
-	4) Inainte de afisare se sorteaza resultatele obtinute la 3) dupa
-	rang si indexul din fisierul de intrare daca e nevoie si apoi
-	se afiseaza lista rezultata din sortare.
-
-- pentru a asigura ca un fragment nu incepe in mijlocul unui cuvant
-se face o ajustare a valorii offset astfel incat la citirea unui caracter
-de la valoarea lui offset acel caracter sa se afle la inceputul unui
-cuvant.
-
-- pentru a asigura ca un fragment nu se termina in mijlocul unui cuvant
-se face o ajustare a valorii size astfel incat la citirea unui caracter
-de la aceasta valoare acel caracter sa se afle la sfarsitul unui cuvant.
-
-- pentru a evita race conditions am folosit structuri de date thread-safe
-acolo unde a fost nevoie (exceptie in collect() din MapOutput am fost
-nevoit sa fac lock pe lista de la key pentru a ma asigura ca nu e 
-modificata de un alt thread in timp ce i se face update-ul)
+	4) Before printing the output, the results from step 3) are sorted
+	using the rank and the index of the input file if need be.
 ===========================================================================
+
+========================= ADDITIONAL COMMENTS ============================
+(*) to make sure that a fragment doesn't start in the middle of a word,
+the offset value is adjusted such that when a character is read from the
+offset value, that character will be the beginning of a word.
+
+(*) to make sure that a fragment doesn't end in the middle of a word,
+the size value is adjusted such that when a character is read from that
+value, that character will be the ending of a word.
+
+(*) in order to avoid race conditions I used thread-safe data structures
+where it was required (exception: in collect() from MapOutput I had to use
+a lock on the list to make sure that it's not being modified by another
+thread while it's being updated)
+===========================================================================
+
