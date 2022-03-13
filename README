@@ -1,0 +1,62 @@
+=========================== DETALII CLASE =================================
+(*) Mapper, Reducer
+- interfete ce asigura genericitatea operatiilor de map si reduce
+
+(**) Collector
+- interfata implementata de obiectele ce vor stoca informatiile operatiilor
+de map si reduce
+- in principiu, clasele care implementeaza aceasta interfata ar trebui sa
+fie niste wrappere peste niste containere (in special, Maps)
+
+(***) Text
+- interfata ce asigura genericitatea valorilor din operatiile de Map
+- aceasta interfata impune claselor care o implementeaza sa ofere o
+metoda de getText() prin care se obtine valoarea ce urmeaza a fi prelu-
+crata in operatiile de tip Map (nu exista nicio constrangere asupra
+obiectului ce urmeaza a fi prelucrat pentru ca m-am gandit ca ar fi
+la latitudinea programatorului care ar folosi API-ul asta sa se asigure
+ca obiectul intors de getText() este ceva ce ar avea sens sa fie
+prelucrat de un Map)
+
+(****) FileEntry
+- am ales sa folosesc aceasta clasa pe post de cheie in reduce() si map()
+deoarece, inainte de a fi scris output-ul, trebuie facuta o sortare a
+output-ului lui reduce() si, in cazul in care 2 fisiere au acelasi rang,
+trebuie facuta diferenta intre ele folosind pozitiile pe care le au
+in fisierul de intrare deci nu ar fi fost suficient sa folosesc doar
+numele fisierelor pe post de chei.
+===========================================================================
+
+======================== DETALII IMPLEMENTARE =============================
+(*) WORKFLOW :
+	1) Se face impartirea fisierelor in fragmente de dimensiune D
+	(daca este posibil).
+
+	2) Se pregateste cate un task de tip map() pentru fiecare fragment
+	produs la 1) si se assigneaza unui worker folosind modelul
+	ExecutorService. Se va astepta terminarea tuturor taskurilor
+	inainte de a trece la pasul urmator.
+
+	3) Se pregateste cate un task de tip reduce() pentru fiecare entry
+	din obiectul de tip Collector produs la 2) si se assigneaza unui
+	worker. Inainte de a trece la pasul 4) se asteapta terminarea
+	tuturor taskurilor.
+
+	4) Inainte de afisare se sorteaza resultatele obtinute la 3) dupa
+	rang si indexul din fisierul de intrare daca e nevoie si apoi
+	se afiseaza lista rezultata din sortare.
+
+- pentru a asigura ca un fragment nu incepe in mijlocul unui cuvant
+se face o ajustare a valorii offset astfel incat la citirea unui caracter
+de la valoarea lui offset acel caracter sa se afle la inceputul unui
+cuvant.
+
+- pentru a asigura ca un fragment nu se termina in mijlocul unui cuvant
+se face o ajustare a valorii size astfel incat la citirea unui caracter
+de la aceasta valoare acel caracter sa se afle la sfarsitul unui cuvant.
+
+- pentru a evita race conditions am folosit structuri de date thread-safe
+acolo unde a fost nevoie (exceptie in collect() din MapOutput am fost
+nevoit sa fac lock pe lista de la key pentru a ma asigura ca nu e 
+modificata de un alt thread in timp ce i se face update-ul)
+===========================================================================
